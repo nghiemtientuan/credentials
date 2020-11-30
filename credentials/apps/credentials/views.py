@@ -141,7 +141,6 @@ class ExampleCredential(SocialMediaMixin, ThemeViewMixin, TemplateView):
         program_details = ProgramDetails(
             uuid=uuid.uuid4(),
             title='Completely Example Program',
-            subtitle='Example Subtitle',
             type=program_type,
             credential_title=None,
             course_count=3,

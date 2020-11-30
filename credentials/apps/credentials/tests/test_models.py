@@ -124,7 +124,6 @@ class ProgramCertificateTests(SiteMixin, TestCase):
         expected = ProgramDetails(
             uuid=program_uuid,
             title='Test Program',
-            subtitle='Test Subtitle',
             type='MicroFakers',
             credential_title=credential_title,
             course_count=len(courses),
@@ -150,7 +149,6 @@ class ProgramCertificateTests(SiteMixin, TestCase):
         body = {
             'uuid': expected.uuid,
             'title': expected.title,
-            'subtitle': expected.subtitle,
             'type': expected.type,
             'authoring_organizations': [
                 {

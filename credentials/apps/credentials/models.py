@@ -19,6 +19,7 @@ from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
 from simple_history.models import HistoricalRecords
 
+from credentials.apps.catalog.models import Program
 from credentials.apps.core.utils import _choices
 from credentials.apps.credentials import constants
 
@@ -215,7 +216,7 @@ class CourseCertificate(AbstractCertificate):
 
 OrganizationDetails = namedtuple('OrganizationDetails', ('uuid', 'key', 'name', 'display_name',
                                                          'certificate_logo_image_url'))
-ProgramDetails = namedtuple('ProgramDetails', ('uuid', 'title', 'subtitle', 'type', 'credential_title', 'course_count',
+ProgramDetails = namedtuple('ProgramDetails', ('uuid', 'title', 'type', 'credential_title', 'course_count',
                                                'organizations', 'hours_of_effort'))
 
 
@@ -262,34 +263,32 @@ class ProgramCertificate(AbstractCertificate):
         """ Returns program data from the Catalog API. """
         return self.site.siteconfiguration.get_program(self.program_uuid)  # pylint: disable=no-member
 
-    # TODO: drop this query in favor of our local copy of
-    #       catalog data (and start copying all data we need)
     @cached_property
     def program_details(self):
         """ Returns details about the program associated with this certificate. """
-        data = self.get_program_api_data()
+        # not catching DoesNotExist because a cert without a matching actual program should blow up
+        program = Program.objects.get(uuid=self.program_uuid)
 
-        organizations = []
-        for organization in data['authoring_organizations']:
-            organizations.append(OrganizationDetails(
-                uuid=organization['uuid'],
-                key=organization['key'],
-                name=organization['name'],
-                display_name=organization['name'] if self.use_org_name else organization['key'],
-                certificate_logo_image_url=organization['certificate_logo_image_url']
-            ))
+        organizations = [
+            OrganizationDetails(
+                uuid=organization.uuid,
+                key=organization.key,
+                name=organization.name,
+                display_name=organization.name if self.use_org_name else organization.key,
+                certificate_logo_image_url=organization.certificate_logo_image_url
+            )
+            for organization
+            in program.authoring_organizations.all()
+        ]
 
-        hours_of_effort = None
-        if self.include_hours_of_effort:
-            hours_of_effort = data.get('total_hours_of_effort')
+        hours_of_effort = data.get('total_hours_of_effort') if self.include_hours_of_effort else None
 
         return ProgramDetails(
-            uuid=data['uuid'],
-            title=data['title'],
-            subtitle=data['subtitle'],
-            type=data['type'],
+            uuid=program.uuid,
+            title=program.title,
+            type=program.type_slug,
             credential_title=self.title,
-            course_count=len(data['courses']),
+            course_count=len(program.course_runs.all()),
             organizations=organizations,
             hours_of_effort=hours_of_effort
         )
